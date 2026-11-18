@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -6,9 +8,10 @@ from app.api.report import router as report_router
 
 app = FastAPI(title="MailShield AI", version="0.1.0")
 
+_cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:5173")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[origin.strip() for origin in _cors_origins.split(",") if origin.strip()],
     allow_methods=["*"],
     allow_headers=["*"],
 )
