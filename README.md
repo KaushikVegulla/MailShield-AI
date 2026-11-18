@@ -4,6 +4,8 @@ AI-Powered Email Threat Detection and Forensic Analysis System
 
 Paste an email or upload a `.eml` file and MailShield AI returns an explainable verdict in seconds: header forensics, malicious link analysis, and an ML phishing score combined into one hybrid risk score, with a downloadable forensic PDF report.
 
+**Live demo:** https://mailshield-web.vercel.app (backend: https://mailshield-backend-qsgo.onrender.com) — load the PayPal sample and hit Analyse. Note: the hosted backend runs without the ML model file, so its verdicts use rules + anomaly with renormalised weights, and the dashboard says so; run the backend locally for the full hybrid including ML.
+
 > **Origin — SIH26106:** Built from Smart India Hackathon 2026 problem statement SIH26106 (Ministry of Home Affairs, National Cyber Crime Training Centre, Blockchain & Cybersecurity). Idea submissions for SIH 2026 closed in October 2026, so this project is **not** a live SIH 2026 submission. It is built for GitHub, college internal selection, and SIH 2027 preparation.
 
 ## What it does (MVP)
