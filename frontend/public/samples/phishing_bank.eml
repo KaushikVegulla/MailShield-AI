@@ -1,0 +1,14 @@
+From: HDFC Bank Alerts <alerts@hdfcbank-secure.xyz>
+Reply-To: helpdesk@secure-mail-help.com
+Return-Path: <alerts@hdfcbank-secure.xyz>
+Subject: Action required: KYC update pending - account will be frozen
+Date: Tue, 11 Nov 2026 09:02:00 +0000
+Authentication-Results: mx.example.com; spf=softfail smtp.mailfrom=hdfcbank-secure.xyz; dkim=none; dmarc=none header.from=hdfcbank-secure.xyz
+Received: from hdfcbank-secure.xyz ([91.198.5.12]) by mx.example.com with ESMTP; Tue, 11 Nov 2026 09:02:00 +0000
+Content-Type: text/html; charset=UTF-8
+
+<html><body>
+<p>Dear customer, your KYC is pending. Complete it now to avoid account freeze.</p>
+<p><a href="https://bit.ly/3xKycUpdateExample">Update KYC on hdfcbank.com</a></p>
+<p><a href="https://xn--hdfcbank-secure-3we.com/kyc">https://www.hdfcbank.com/kyc</a></p>
+</body></html>

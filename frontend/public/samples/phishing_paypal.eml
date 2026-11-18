@@ -1,0 +1,16 @@
+From: PayPal Security <service@paypa1-secure-login.com>
+Reply-To: support@paypa1-secure-login.com
+Return-Path: <bounce@185.220.101.47>
+Subject: URGENT: Your account has been limited - verify within 24 hours
+Date: Mon, 10 Nov 2026 03:14:00 +0000
+Authentication-Results: mx.example.com; spf=fail (sender IP is 185.220.101.47) smtp.mailfrom=paypa1-secure-login.com; dkim=none; dmarc=fail header.from=paypa1-secure-login.com
+Received: from mail.paypa1-secure-login.com ([185.220.101.47]) by mx.example.com with ESMTP; Mon, 10 Nov 2026 03:14:00 +0000
+Content-Type: text/html; charset=UTF-8
+
+<html><body>
+<p>Dear customer,</p>
+<p>We detected unusual activity on your account. Your account has been limited.</p>
+<p>Verify your identity immediately or your account will be permanently closed within 24 hours:</p>
+<p><a href="http://185.220.101.47/login/verify">https://www.paypal.com/signin</a></p>
+<p>Enter your password and card details to restore access.</p>
+</body></html>
