@@ -22,6 +22,7 @@ from app.core.geo import lookup_ip
 from app.core.headers import analyze_headers
 from app.core.parser import parse_email
 from app.core.qr import extract_qr_codes
+from app.core.redirects import analyze_redirects
 from app.core.scoring import score_email
 from app.core.urls import analyze_urls
 from app.ml.predict import predict_phishing
@@ -40,6 +41,7 @@ def _result(raw: str | bytes) -> dict:
     qr_links = [{"url": url, "display_text": None, "source": "qr"} for url in qr_analysis.get("urls", [])]
     url_analysis = analyze_urls(parsed, extra_links=qr_links)
     feed_analysis = apply_feed_matches(url_analysis)
+    redirect_analysis = analyze_redirects(url_analysis)
     attachment_analysis = analyze_attachments(raw, parsed)
     originating_ip_geo = lookup_ip(parsed.get("originating_ip"))
     ml_prediction = predict_phishing(parsed)
@@ -59,6 +61,7 @@ def _result(raw: str | bytes) -> dict:
         "header_forensics": header_forensics,
         "url_analysis": url_analysis,
         "feed_analysis": feed_analysis,
+        "redirect_analysis": redirect_analysis,
         "attachment_analysis": attachment_analysis,
         "originating_ip_geo": originating_ip_geo,
         "qr_analysis": qr_analysis,

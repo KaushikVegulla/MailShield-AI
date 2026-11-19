@@ -79,6 +79,8 @@ def build_reasons(header_forensics: dict, url_analysis: dict, ml_prediction: dic
             if flag.get("points"):
                 if flag.get("source") == "feed":
                     reasons.append({"source": "feed", "detail": f"{url['url']} — {flag['detail']}", "points": flag["points"]})
+                elif flag.get("source") == "redirect":
+                    reasons.append({"source": "redirect", "detail": f"{url['url']} — {flag['detail']}", "points": flag["points"]})
                 elif url.get("source") == "qr":
                     detail = f"QR code decoded link {url['url']} — {flag['detail']}"
                     reasons.append({"source": "qr", "detail": detail, "points": flag["points"]})
