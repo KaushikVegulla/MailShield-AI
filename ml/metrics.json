@@ -4,31 +4,181 @@
       "Nazario Phishing Corpus (monkey.org/~jose/phishing) \u2014 phishing",
       "SpamAssassin public corpus easy_ham + hard_ham \u2014 legitimate"
     ],
-    "total_emails_used": 5778,
-    "phishing": 3059,
-    "legitimate": 2719,
+    "total_emails_used": 6048,
+    "phishing": 3324,
+    "legitimate": 2724,
     "skipped_empty": 86,
-    "skipped_duplicate": 1459,
-    "train_size": 4622,
-    "test_size": 1156,
-    "split": "stratified 80/20, random_state=42",
+    "duplicates_removed": 1189,
+    "deduplication": "SHA-256 hash of the full cleaned subject + body text, applied before splitting (the original run deduplicated on a 400-character prefix and removed more near-duplicates)",
+    "dated_messages": 6044,
     "features": "TF-IDF word n-grams (1,2), max 15000 features, subject + body text only"
+  },
+  "splits": {
+    "random_stratified": {
+      "description": "Stratified 80/20 random split, seed 42. Same sender or campaign can appear on both sides \u2014 the optimistic view, kept for comparability with the first published run.",
+      "train_size": 4838,
+      "test_size": 1210,
+      "test_phishing": 665,
+      "test_legitimate": 545,
+      "models": {
+        "logistic_regression": {
+          "accuracy": 0.9926,
+          "precision": 0.9955,
+          "recall": 0.991,
+          "f1": 0.9932,
+          "false_positive_rate": 0.0055,
+          "confusion": {
+            "tp": 659,
+            "fp": 3,
+            "tn": 542,
+            "fn": 6
+          }
+        },
+        "xgboost": {
+          "accuracy": 0.9876,
+          "precision": 0.9909,
+          "recall": 0.9865,
+          "f1": 0.9887,
+          "false_positive_rate": 0.011,
+          "confusion": {
+            "tp": 656,
+            "fp": 6,
+            "tn": 539,
+            "fn": 9
+          }
+        }
+      }
+    },
+    "temporal": {
+      "description": "Train on the earliest 80% of messages with a parseable Date header, test on the latest 20%. Messages without a usable Date are excluded from this split only.",
+      "train_size": 4835,
+      "test_size": 1209,
+      "test_phishing": 1208,
+      "test_legitimate": 1,
+      "class_balance_warning": "Test set is heavily imbalanced (1208 phishing vs 1 legitimate): precision, recall and false-positive rate for the minority class rest on very few messages and should not be quoted without this context. This happens because the two corpora cover different periods \u2014 SpamAssassin ham is from 2002-2003 while the Nazario phishing corpus extends years later \u2014 so a date-ordered split puts almost only phishing in the newest slice.",
+      "excluded_no_date": 4,
+      "date_range": {
+        "earliest": "1970-01-03",
+        "test_starts": "2006-10-08",
+        "latest": "2038-01-19"
+      },
+      "models": {
+        "logistic_regression": {
+          "accuracy": 0.9256,
+          "precision": 1.0,
+          "recall": 0.9255,
+          "f1": 0.9613,
+          "false_positive_rate": 0.0,
+          "confusion": {
+            "tp": 1118,
+            "fp": 0,
+            "tn": 1,
+            "fn": 90
+          }
+        },
+        "xgboost": {
+          "accuracy": 0.9429,
+          "precision": 1.0,
+          "recall": 0.9429,
+          "f1": 0.9706,
+          "false_positive_rate": 0.0,
+          "confusion": {
+            "tp": 1139,
+            "fp": 0,
+            "tn": 1,
+            "fn": 69
+          }
+        }
+      }
+    },
+    "group_sender_domain": {
+      "description": "GroupShuffleSplit by sender domain (source file as the group when no From domain exists): no sender domain appears in both train and test.",
+      "train_size": 4713,
+      "test_size": 1335,
+      "test_phishing": 995,
+      "test_legitimate": 340,
+      "unique_groups": 1013,
+      "test_groups": 203,
+      "models": {
+        "logistic_regression": {
+          "accuracy": 0.9933,
+          "precision": 0.996,
+          "recall": 0.995,
+          "f1": 0.9955,
+          "false_positive_rate": 0.0118,
+          "confusion": {
+            "tp": 990,
+            "fp": 4,
+            "tn": 336,
+            "fn": 5
+          }
+        },
+        "xgboost": {
+          "accuracy": 0.9865,
+          "precision": 0.9929,
+          "recall": 0.9889,
+          "f1": 0.9909,
+          "false_positive_rate": 0.0206,
+          "confusion": {
+            "tp": 984,
+            "fp": 7,
+            "tn": 333,
+            "fn": 11
+          }
+        }
+      }
+    }
   },
   "models": {
     "logistic_regression": {
-      "accuracy": 0.9939,
-      "precision": 0.9951,
-      "recall": 0.9935,
-      "f1": 0.9943
+      "accuracy": 0.9926,
+      "precision": 0.9955,
+      "recall": 0.991,
+      "f1": 0.9932,
+      "false_positive_rate": 0.0055,
+      "confusion": {
+        "tp": 659,
+        "fp": 3,
+        "tn": 542,
+        "fn": 6
+      }
     },
     "xgboost": {
-      "accuracy": 0.9939,
-      "precision": 0.9935,
-      "recall": 0.9951,
-      "f1": 0.9943
+      "accuracy": 0.9876,
+      "precision": 0.9909,
+      "recall": 0.9865,
+      "f1": 0.9887,
+      "false_positive_rate": 0.011,
+      "confusion": {
+        "tp": 656,
+        "fp": 6,
+        "tn": 539,
+        "fn": 9
+      }
     }
   },
   "selected_model": "logistic_regression",
-  "evaluated_on": "2026-11-18",
-  "note": "In-domain held-out metrics on 2002-2007 corpora. Real measured results; not a guarantee of accuracy on modern phishing."
+  "evaluated_on": "2026-11-19",
+  "note": "All numbers are real measured results on 2002-2007 corpora. The random split is the most optimistic view; the temporal and sender-domain group splits are harder and closer to how the model meets new mail. None of these splits measures performance on modern legitimate mail \u2014 use evaluate_heldout.py with a never-trained folder for that.",
+  "previous_published_run": {
+    "evaluated_on": "2026-11-18",
+    "dataset_total_emails_used": 5778,
+    "deduplication": "400-character text prefix (original method)",
+    "split": "stratified 80/20, random_state=42",
+    "models": {
+      "logistic_regression": {
+        "accuracy": 0.9939,
+        "precision": 0.9951,
+        "recall": 0.9935,
+        "f1": 0.9943
+      },
+      "xgboost": {
+        "accuracy": 0.9939,
+        "precision": 0.9935,
+        "recall": 0.9951,
+        "f1": 0.9943
+      }
+    },
+    "selected_model": "logistic_regression"
+  }
 }

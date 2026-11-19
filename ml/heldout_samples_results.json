@@ -1,0 +1,55 @@
+{
+  "folder": "../samples",
+  "model": "/home/hatch/workspace/mailshield-ai/ml/models/phishing_pipeline.joblib",
+  "model_name": "logistic_regression",
+  "summary": {
+    "files_evaluated": 4,
+    "skipped": [],
+    "overlap_check": "available",
+    "files_found_in_training_corpus": 0,
+    "accuracy": 0.5,
+    "false_positive_rate_on_legitimate": 1.0,
+    "false_negative_rate_on_phishing": 0.0,
+    "confusion": {
+      "tp": 2,
+      "fp": 2,
+      "tn": 0,
+      "fn": 0
+    }
+  },
+  "files": [
+    {
+      "file": "legit_college.eml",
+      "true_label": "legitimate",
+      "body_sha256": "5fc46f1488189e20284a0f70d87131775378b9ce41bebdf6c3267d87c3176dc0",
+      "in_training_corpus": false,
+      "phishing_probability": 0.7606,
+      "predicted_label": "phishing"
+    },
+    {
+      "file": "legit_newsletter.eml",
+      "true_label": "legitimate",
+      "body_sha256": "895e1d759c590024d282d6317826a8fe689d3bf777fae55391b63ed798e3eaad",
+      "in_training_corpus": false,
+      "phishing_probability": 0.6949,
+      "predicted_label": "phishing"
+    },
+    {
+      "file": "phishing_bank.eml",
+      "true_label": "phishing",
+      "body_sha256": "b53122de87c382f362285c9b29585a093feef8861a97d27b10780c05643de20b",
+      "in_training_corpus": false,
+      "phishing_probability": 0.9411,
+      "predicted_label": "phishing"
+    },
+    {
+      "file": "phishing_paypal.eml",
+      "true_label": "phishing",
+      "body_sha256": "b6919f146db17acaf7213d15a10d6a90fcd46c6041933bed6c14ba09db5f8d51",
+      "in_training_corpus": false,
+      "phishing_probability": 0.9975,
+      "predicted_label": "phishing"
+    }
+  ],
+  "note": "Held-out check only \u2014 this folder was not used for training or for any split in evaluate.py. Small folders illustrate behaviour; they are not a benchmark."
+}
