@@ -17,14 +17,17 @@ from app import __version__ as TOOL_VERSION
 
 from app.core.anomaly import analyze_anomaly
 from app.core.attachments import analyze_attachments
+from app.core.bec import analyze_bec
 from app.core.feeds import apply_feed_matches
 from app.core.geo import lookup_ip
 from app.core.headers import analyze_headers
 from app.core.parser import parse_email
 from app.core.qr import extract_qr_codes
+from app.core.redirects import analyze_redirects
 from app.core.scoring import score_email
 from app.core.urls import analyze_urls
 from app.ml.predict import predict_phishing
+from app.ml.second_opinion import second_opinion
 
 router = APIRouter(prefix="/analyze", tags=["analyze"])
 
@@ -40,7 +43,9 @@ def _result(raw: str | bytes) -> dict:
     qr_links = [{"url": url, "display_text": None, "source": "qr"} for url in qr_analysis.get("urls", [])]
     url_analysis = analyze_urls(parsed, extra_links=qr_links)
     feed_analysis = apply_feed_matches(url_analysis)
+    redirect_analysis = analyze_redirects(url_analysis)
     attachment_analysis = analyze_attachments(raw, parsed)
+    bec_analysis = analyze_bec(parsed)
     originating_ip_geo = lookup_ip(parsed.get("originating_ip"))
     ml_prediction = predict_phishing(parsed)
     # Attachment filename risk is scored by triage, not here (no double count).
@@ -54,18 +59,23 @@ def _result(raw: str | bytes) -> dict:
         "tool_version": TOOL_VERSION,
         "note": "SHA-256 computed over the email bytes exactly as received. Analysis is stateless — no copy of the email is retained after the request.",
     }
+    verdict = score_email(parsed, header_forensics, url_analysis, ml_prediction, anomaly, attachment_analysis, bec_analysis)
     return {
         "parsed": parsed,
         "header_forensics": header_forensics,
         "url_analysis": url_analysis,
         "feed_analysis": feed_analysis,
+        "redirect_analysis": redirect_analysis,
         "attachment_analysis": attachment_analysis,
+        "bec_analysis": bec_analysis,
         "originating_ip_geo": originating_ip_geo,
         "qr_analysis": qr_analysis,
         "ml_prediction": ml_prediction,
+        # Advisory only: computed after the verdict, never passed to it.
+        "second_opinion": second_opinion(parsed),
         "anomaly": anomaly,
         "evidence": evidence,
-        "verdict": score_email(parsed, header_forensics, url_analysis, ml_prediction, anomaly, attachment_analysis),
+        "verdict": verdict,
     }
 
 

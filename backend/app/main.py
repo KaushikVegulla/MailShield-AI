@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.analyze import router as analyze_router
+from app.api.explain import router as explain_router
 from app.api.report import router as report_router
 
 app = FastAPI(title="MailShield AI", version="0.1.0")
@@ -18,8 +19,16 @@ app.add_middleware(
 
 app.include_router(analyze_router)
 app.include_router(report_router)
+app.include_router(explain_router)
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "mailshield-ai", "version": "0.1.0"}
+    from app.ml.predict import _load
+
+    return {
+        "status": "ok",
+        "service": "mailshield-ai",
+        "version": "0.1.0",
+        "ml_model": "loaded" if _load() is not None else "absent",
+    }

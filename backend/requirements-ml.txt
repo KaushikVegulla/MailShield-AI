@@ -1,0 +1,12 @@
+# Optional transformer second opinion (app/ml/second_opinion.py).
+#
+# These are deliberately NOT in requirements.txt: torch adds gigabytes
+# and would break the free-tier hosted build. Install this file only
+# where the second opinion is wanted, on top of requirements.txt, and
+# set SECOND_OPINION_MODEL to enable it at runtime.
+#
+# The CPU wheel index keeps the install to CPU builds (~hundreds of
+# MB instead of the multi-GB CUDA stack).
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.15.0
+transformers==5.23.0
