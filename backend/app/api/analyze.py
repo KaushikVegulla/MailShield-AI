@@ -7,8 +7,13 @@ analysis, ML prediction, anomaly signals and the hybrid verdict
 
 from __future__ import annotations
 
+import datetime
+import hashlib
+
 from fastapi import APIRouter, File, UploadFile
 from pydantic import BaseModel
+
+from app import __version__ as TOOL_VERSION
 
 from app.core.anomaly import analyze_anomaly
 from app.core.headers import analyze_headers
@@ -33,6 +38,15 @@ def _result(raw: str | bytes) -> dict:
     url_analysis = analyze_urls(parsed, extra_links=qr_links)
     ml_prediction = predict_phishing(parsed)
     anomaly = analyze_anomaly(parsed)
+    raw_bytes = raw.encode("utf-8", errors="replace") if isinstance(raw, str) else raw
+    evidence = {
+        "email_sha256": hashlib.sha256(raw_bytes).hexdigest(),
+        "email_size_bytes": len(raw_bytes),
+        "analysed_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "tool": "MailShield AI",
+        "tool_version": TOOL_VERSION,
+        "note": "SHA-256 computed over the email bytes exactly as received. Analysis is stateless — no copy of the email is retained after the request.",
+    }
     return {
         "parsed": parsed,
         "header_forensics": header_forensics,
@@ -40,6 +54,7 @@ def _result(raw: str | bytes) -> dict:
         "qr_analysis": qr_analysis,
         "ml_prediction": ml_prediction,
         "anomaly": anomaly,
+        "evidence": evidence,
         "verdict": score_email(parsed, header_forensics, url_analysis, ml_prediction, anomaly),
     }
 

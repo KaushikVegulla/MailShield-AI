@@ -63,6 +63,10 @@ def parse_email(raw: str | bytes) -> dict:
                 "date": None,
                 "message_id": None,
                 "authentication_results": None,
+                "authentication_results_all": [],
+                "arc_authentication_results": [],
+                "arc_message_signature": [],
+                "arc_seal": [],
                 "received": [],
                 "originating_ip": None,
                 "body_text": raw,
@@ -113,6 +117,10 @@ def parse_email(raw: str | bytes) -> dict:
             break
 
     auth = msg.get("Authentication-Results")
+
+    def _all(name: str) -> list[str]:
+        return [" ".join(str(v).split()) for v in (msg.get_all(name) or [])]
+
     return {
         "subject": str(msg.get("Subject")) if msg.get("Subject") else None,
         "from": _address_field(str(msg.get("From"))) if msg.get("From") else None,
@@ -122,6 +130,10 @@ def parse_email(raw: str | bytes) -> dict:
         "date": str(msg.get("Date")) if msg.get("Date") else None,
         "message_id": str(msg.get("Message-ID")) if msg.get("Message-ID") else None,
         "authentication_results": str(auth) if auth else None,
+        "authentication_results_all": _all("Authentication-Results"),
+        "arc_authentication_results": _all("ARC-Authentication-Results"),
+        "arc_message_signature": _all("ARC-Message-Signature"),
+        "arc_seal": _all("ARC-Seal"),
         "received": received,
         "originating_ip": originating_ip,
         "body_text": "\n".join(body_text_parts) or None,
