@@ -66,7 +66,7 @@ def combine_scores(header_points: int, url_points: int, ml_points: int | None, a
     }
 
 
-def build_reasons(header_forensics: dict, url_analysis: dict, ml_prediction: dict, anomaly: dict, attachment_analysis: dict | None = None) -> list[dict]:
+def build_reasons(header_forensics: dict, url_analysis: dict, ml_prediction: dict, anomaly: dict, attachment_analysis: dict | None = None, bec_analysis: dict | None = None) -> list[dict]:
     """Flatten every signal that fired into one explainable list."""
     reasons: list[dict] = []
 
@@ -105,18 +105,26 @@ def build_reasons(header_forensics: dict, url_analysis: dict, ml_prediction: dic
             if finding.get("points"):
                 reasons.append({"source": "attachment", "detail": finding["detail"], "points": finding["points"]})
 
+    for signal in (bec_analysis or {}).get("signals", []):
+        if signal.get("points"):
+            reasons.append({"source": "bec", "detail": signal["detail"], "points": signal["points"]})
+
     reasons.sort(key=lambda r: (r["points"] is None, -(r["points"] or 0)))
     return reasons
 
 
-def score_email(parsed: dict, header_forensics: dict, url_analysis: dict, ml_prediction: dict, anomaly: dict, attachment_analysis: dict | None = None) -> dict:
+def score_email(parsed: dict, header_forensics: dict, url_analysis: dict, ml_prediction: dict, anomaly: dict, attachment_analysis: dict | None = None, bec_analysis: dict | None = None) -> dict:
     # Attachment triage points ride the anomaly weight (0.15): both are
     # behavioural/content evidence rather than header or link rules,
     # and the anomaly module no longer scores attachments itself when
-    # triage ran, so nothing is counted twice.
+    # triage ran, so nothing is counted twice. BEC intent points ride
+    # the same weight for the same reason — payment-fraud intent is
+    # content evidence, and its module caps its own contribution.
     anomaly_points = anomaly.get("anomaly_points", 0)
     if attachment_analysis is not None:
         anomaly_points = min(100, anomaly_points + attachment_analysis.get("attachment_points", 0))
+    if bec_analysis is not None:
+        anomaly_points = min(100, anomaly_points + bec_analysis.get("bec_points", 0))
     result = combine_scores(
         header_points=header_forensics.get("rule_points", 0),
         url_points=url_analysis.get("url_points", 0),
@@ -125,6 +133,8 @@ def score_email(parsed: dict, header_forensics: dict, url_analysis: dict, ml_pre
     )
     if attachment_analysis is not None:
         result["components"]["anomaly"]["attachment_points"] = attachment_analysis.get("attachment_points", 0)
-    result["reasons"] = build_reasons(header_forensics, url_analysis, ml_prediction, anomaly, attachment_analysis)
+    if bec_analysis is not None:
+        result["components"]["anomaly"]["bec_points"] = bec_analysis.get("bec_points", 0)
+    result["reasons"] = build_reasons(header_forensics, url_analysis, ml_prediction, anomaly, attachment_analysis, bec_analysis)
     result["anomaly_signals"] = anomaly.get("signals", [])
     return result

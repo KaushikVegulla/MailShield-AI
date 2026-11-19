@@ -17,6 +17,7 @@ from app import __version__ as TOOL_VERSION
 
 from app.core.anomaly import analyze_anomaly
 from app.core.attachments import analyze_attachments
+from app.core.bec import analyze_bec
 from app.core.feeds import apply_feed_matches
 from app.core.geo import lookup_ip
 from app.core.headers import analyze_headers
@@ -43,6 +44,7 @@ def _result(raw: str | bytes) -> dict:
     feed_analysis = apply_feed_matches(url_analysis)
     redirect_analysis = analyze_redirects(url_analysis)
     attachment_analysis = analyze_attachments(raw, parsed)
+    bec_analysis = analyze_bec(parsed)
     originating_ip_geo = lookup_ip(parsed.get("originating_ip"))
     ml_prediction = predict_phishing(parsed)
     # Attachment filename risk is scored by triage, not here (no double count).
@@ -63,12 +65,13 @@ def _result(raw: str | bytes) -> dict:
         "feed_analysis": feed_analysis,
         "redirect_analysis": redirect_analysis,
         "attachment_analysis": attachment_analysis,
+        "bec_analysis": bec_analysis,
         "originating_ip_geo": originating_ip_geo,
         "qr_analysis": qr_analysis,
         "ml_prediction": ml_prediction,
         "anomaly": anomaly,
         "evidence": evidence,
-        "verdict": score_email(parsed, header_forensics, url_analysis, ml_prediction, anomaly, attachment_analysis),
+        "verdict": score_email(parsed, header_forensics, url_analysis, ml_prediction, anomaly, attachment_analysis, bec_analysis),
     }
 
 
