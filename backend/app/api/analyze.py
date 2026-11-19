@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from app.core.anomaly import analyze_anomaly
 from app.core.headers import analyze_headers
 from app.core.parser import parse_email
+from app.core.qr import extract_qr_codes
 from app.core.scoring import score_email
 from app.core.urls import analyze_urls
 from app.ml.predict import predict_phishing
@@ -27,13 +28,16 @@ class PasteRequest(BaseModel):
 def _result(raw: str | bytes) -> dict:
     parsed = parse_email(raw)
     header_forensics = analyze_headers(parsed)
-    url_analysis = analyze_urls(parsed)
+    qr_analysis = extract_qr_codes(raw, parsed)
+    qr_links = [{"url": url, "display_text": None, "source": "qr"} for url in qr_analysis.get("urls", [])]
+    url_analysis = analyze_urls(parsed, extra_links=qr_links)
     ml_prediction = predict_phishing(parsed)
     anomaly = analyze_anomaly(parsed)
     return {
         "parsed": parsed,
         "header_forensics": header_forensics,
         "url_analysis": url_analysis,
+        "qr_analysis": qr_analysis,
         "ml_prediction": ml_prediction,
         "anomaly": anomaly,
         "verdict": score_email(parsed, header_forensics, url_analysis, ml_prediction, anomaly),

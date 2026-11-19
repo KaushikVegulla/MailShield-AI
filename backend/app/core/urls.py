@@ -199,6 +199,7 @@ def check_url(link: dict) -> dict:
     return {
         "url": url,
         "display_text": display_text,
+        "source": link.get("source") or "body",
         "host": host or None,
         "scheme": parts.scheme or None,
         "flags": flags,
@@ -207,14 +208,24 @@ def check_url(link: dict) -> dict:
     }
 
 
-def analyze_urls(parsed: dict) -> dict:
+def analyze_urls(parsed: dict, extra_links: list[dict] | None = None) -> dict:
     """Analyse every link in a parsed email.
+
+    ``extra_links`` are links found outside the body text — currently
+    URLs decoded from QR codes (see app.core.qr), each carrying
+    ``source: "qr"``. They are checked and scored exactly like body
+    links; a URL already present as a body link is not counted twice.
 
     Aggregate: the worst link scores in full, plus 10 points for each
     additional suspicious link, capped at 100 — one bad link is already
     serious; several independent bad links are worse.
     """
     results = [check_url(link) for link in extract_urls(parsed)]
+    known = {r["url"] for r in results}
+    for link in extra_links or []:
+        if link.get("url") and link["url"] not in known:
+            results.append(check_url(link))
+            known.add(link["url"])
     suspicious = [r for r in results if r["suspicious"]]
     if suspicious:
         worst = max(r["points"] for r in suspicious)
