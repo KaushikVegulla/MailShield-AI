@@ -34,7 +34,12 @@ from dataset import load_dataset  # noqa: E402
 def main() -> int:
     started = time.monotonic()
     print("[train_build] downloading corpora (existing files are skipped)")
-    download_data.main()
+    try:
+        download_data.main()
+    except Exception as error:
+        print(f"[train_build] ERROR: corpus download failed: {error}")
+        print("[train_build] continuing without a model - the backend scores without its ML component")
+        return 1
 
     print("[train_build] building dataset (full-hash dedup, as in dataset.py)")
     texts, labels, counts = load_dataset()
