@@ -10,7 +10,7 @@ MailShield runs the same way as ShieldNet: backend on Render, dashboard on Verce
 
 Notes:
 - Free tier sleeps after inactivity; the first request after sleep takes ~30–60 s (hosting cold start, not analysis time).
-- The hosted backend has no ML model file (the trained joblib is not committed — binaries are not pushed), so `ml_prediction.model_available` is false there and the hybrid score renormalises over rules + anomaly. The dashboard shows this honestly. To ship the model later, train it during the Render build (`ml/download_data.py` + `ml/train.py` as a pre-build step) — not done yet because the corpus hosts can be slow from datacenter IPs.
+- The trained model binary is not committed (binaries are not pushed), so the Render build trains it instead: the build command runs `ml/train_build.py` after installing requirements, which downloads the same public corpora, trains the TF-IDF + Logistic Regression pipeline and saves the artefact where the backend loads it. The step is guarded — if training fails (for example a corpus host is unreachable) the deploy still succeeds and the backend runs without the ML component, renormalising the hybrid score over rules + anomaly, with the dashboard saying so. `GET /health` reports `"ml_model": "loaded"` or `"absent"` so the state is checkable at any time.
 
 ## Frontend — Vercel
 

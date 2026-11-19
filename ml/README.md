@@ -46,6 +46,10 @@ python evaluate_heldout.py ../samples --label from-filename    # phishing_*.eml 
 
 Every file's body hash is checked against the training corpora (when they are downloaded), so a "held-out" file that was actually trained on is flagged. An illustrative run on this repo's own four samples is saved in `heldout_samples_results.json`: none of the four is in the training corpora; the retrained model scores the PayPal sample **0.9975** and the bank sample **0.9411** phishing — and the two modern legitimate samples **0.7606** and **0.6949**, i.e. phishing on text alone. Four files illustrate behaviour; they are not a benchmark. A consented set of a few hundred modern legitimate messages (OTPs, receipts, GitHub/Google notifications, newsletters) is the dataset that would turn this into a real measurement.
 
+## Build-time training (hosted deployments)
+
+The artefact is not committed, so the Render build trains it: `train_build.py` downloads the same corpora (skipping files already present), rebuilds the dataset with the same full-hash deduplication, trains the Logistic Regression pipeline exactly as defined in `train.py`, and saves it to `models/phishing_pipeline.joblib`. The build step is guarded so a training failure never fails the deploy — the backend then runs without the ML component and `/health` reports `"ml_model": "absent"`. Measured locally: 6,048 emails (3,324 phishing / 2,724 legitimate), held-out random-split F1 0.9932, ~28 s end to end, artefact ~0.7 MB.
+
 ## Real measured results (first run, 18 Nov 2026)
 
 Held-out random test split, 1,156 emails:

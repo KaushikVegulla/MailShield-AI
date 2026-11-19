@@ -4,7 +4,7 @@ AI-Powered Email Threat Detection and Forensic Analysis System
 
 Paste an email or upload a `.eml` file and MailShield AI returns an explainable verdict in seconds: header forensics, malicious link analysis, and an ML phishing score combined into one hybrid risk score, with a downloadable forensic PDF report.
 
-**Live demo:** https://mailshield-web.vercel.app (backend: https://mailshield-backend-qsgo.onrender.com) — load the PayPal sample and hit Analyse. Note: the hosted backend runs without the ML model file, so its verdicts use rules + anomaly with renormalised weights, and the dashboard says so; run the backend locally for the full hybrid including ML.
+**Live demo:** https://mailshield-web.vercel.app (backend: https://mailshield-backend-qsgo.onrender.com) — load the PayPal sample and hit Analyse. The model binary is not committed, so the hosted backend trains the ML model during its Render build (guarded: if training ever fails, the deploy still succeeds and verdicts renormalise over rules + anomaly, with the dashboard saying so). `GET /health` on the backend reports whether the model is loaded.
 
 > **Origin — SIH26106:** Built from Smart India Hackathon 2026 problem statement SIH26106 (Ministry of Home Affairs, National Cyber Crime Training Centre, Blockchain & Cybersecurity). Idea submissions for SIH 2026 closed in October 2026, so this project is **not** a live SIH 2026 submission. It is built for GitHub, college internal selection, and SIH 2027 preparation.
 
@@ -18,14 +18,23 @@ Paste an email or upload a `.eml` file and MailShield AI returns an explainable 
 - **Attachment triage** — static inspection for dangerous extensions, double extensions, archive contents, Office macros (including `vbaProject.bin`), and PDF active content; nothing is executed
 - **Received timing + geolocation** — hop timestamp anomalies (future-dated, negative delays, multi-day gaps, all informational) and a passive, cached ip-api.com lookup of the originating IP
 - **IOC export** — one-click CSV (defanged) and STIX 2.1 bundle export of every indicator in an analysis, via `POST /report/iocs/email` and `/report/iocs/eml` with `?format=csv|stix`
+- **Redirect + landing-page analysis** — link destinations are followed server-side (max 5 hops, ~4 s budget, response-size cap, no JavaScript) and the landing page is inspected for credential-harvest signals: password fields, forms posting to a different domain, brand impersonation. SSRF-guarded: hosts resolving to private/loopback/link-local addresses are refused, and URLs already matched by a threat feed are not fetched
+- **BEC / payment-fraud intent** — a dedicated module reads the message's intent: bank-detail changes, wire requests, gift-card and payroll-diversion asks, secrecy pressure, and executive-impersonation framing backed by a free-mail or diverted-reply sender. Signals carry evidence snippets and ride the anomaly weight; a stateless tool sees one message, so sender-history claims are never made
+- **Optional LLM explanation** — `POST /explain/email` and `/explain/eml` narrate a finished analysis in plain language via Google Gemini. Off unless the operator sets `GEMINI_API_KEY` in the environment (on the current hosted service it is not set, and the endpoint says so). The prompt is built only from the structured findings — never the raw email — and the explainer has no path into scoring
+- **Optional transformer second opinion** — a pre-trained DistilBERT-class phishing classifier can be enabled with `SECOND_OPINION_MODEL` plus the extra dependencies in `backend/requirements-ml.txt`. Advisory only: it is attached to the response after the verdict and never feeds the hybrid score. Off by default everywhere, including the hosted deployment
 - **ML phishing classifier** — trained on a real public phishing email dataset (see `ml/README.md`). Only real measured metrics are reported — no invented accuracy figures
 - **Hybrid explainable risk score** — rules (0.50) + ML (0.35) + anomaly (0.15) combined into one score, with every reason listed
 - **Analyst dashboard** — verdict, highlighted evidence, URL and header tables
 - **Forensic PDF report** — downloadable report for each analysis
 
-### Out of scope for MVP
+### Out of scope
 
-Deep attachment sandboxing, full indicator correlation graph, and live mailbox / Gmail integration are planned for v2.
+Deep attachment sandboxing (see Architecture decisions), a full indicator correlation graph, and live mailbox / Gmail integration.
+
+## Architecture decisions
+
+- **Self-hosted rspamd — evaluated, not adopted.** rspamd is an excellent mail-filtering system, but it is a separate long-running service (with its own configuration, Redis and update cycle) designed to sit inside a mail server's delivery path. MailShield is a stateless analyser on free-tier hosting: there is no mail flow to plug rspamd into and no budget for a second always-on service. MailShield instead borrows rspamd's *ideas* — symbol-style explainable signals and scoring URL display/href mismatch separately — in its own rule modules.
+- **Dangerzone — evaluated, not adopted.** Dangerzone renders attachments safely by converting them to pixels inside containers (gVisor/Docker). That sandbox infrastructure cannot run inside a stateless free-tier web service, and MailShield never executes attachments in the first place — its triage is purely static (structure, macros, active content, hashes). For a future self-hosted SOC deployment, Dangerzone-style safe viewing is the right complement; for this deployment it is the wrong shape.
 
 ## Architecture
 
