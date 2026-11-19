@@ -18,6 +18,7 @@ from app import __version__ as TOOL_VERSION
 from app.core.anomaly import analyze_anomaly
 from app.core.attachments import analyze_attachments
 from app.core.feeds import apply_feed_matches
+from app.core.geo import lookup_ip
 from app.core.headers import analyze_headers
 from app.core.parser import parse_email
 from app.core.qr import extract_qr_codes
@@ -40,6 +41,7 @@ def _result(raw: str | bytes) -> dict:
     url_analysis = analyze_urls(parsed, extra_links=qr_links)
     feed_analysis = apply_feed_matches(url_analysis)
     attachment_analysis = analyze_attachments(raw, parsed)
+    originating_ip_geo = lookup_ip(parsed.get("originating_ip"))
     ml_prediction = predict_phishing(parsed)
     # Attachment filename risk is scored by triage, not here (no double count).
     anomaly = analyze_anomaly(parsed, score_attachments=False)
@@ -58,6 +60,7 @@ def _result(raw: str | bytes) -> dict:
         "url_analysis": url_analysis,
         "feed_analysis": feed_analysis,
         "attachment_analysis": attachment_analysis,
+        "originating_ip_geo": originating_ip_geo,
         "qr_analysis": qr_analysis,
         "ml_prediction": ml_prediction,
         "anomaly": anomaly,

@@ -7,7 +7,9 @@ signals that the hybrid scorer (a later step) will consume.
 
 from __future__ import annotations
 
+import datetime
 import re
+from email.utils import parsedate_to_datetime
 
 _AUTH_RE = {
     "spf": re.compile(r"\bspf=(\w+)", re.IGNORECASE),
@@ -174,6 +176,93 @@ def summarize_arc(parsed: dict) -> dict:
     }
 
 
+# Received-timing thresholds. Received headers are written by every
+# relay the mail passed through — and by the sender's own first hop,
+# so they are evidence, not proof. All timing findings are therefore
+# informational (0 points): they corroborate, they never convict.
+FUTURE_TOLERANCE_SECONDS = 300      # a hop may be stamped up to 5 min ahead (clock skew)
+NEGATIVE_TOLERANCE_SECONDS = 120    # small backwards steps happen with skewed clocks
+LARGE_GAP_SECONDS = 48 * 3600       # 48h between hops: the mail sat somewhere for days
+
+
+def _received_datetime(raw: str) -> datetime.datetime | None:
+    """Parse the '; <date>' trailer of a Received header value."""
+    if ";" not in raw:
+        return None
+    try:
+        parsed = parsedate_to_datetime(raw.rsplit(";", 1)[1].strip())
+    except Exception:
+        return None
+    if parsed is None:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=datetime.timezone.utc)
+    return parsed
+
+
+def analyze_received_timing(parsed: dict, now: datetime.datetime | None = None) -> dict:
+    """Timing analysis of the Received chain, oldest hop first.
+
+    Flags future-dated hops, negative (impossible) delays between
+    consecutive hops, and unusually large gaps. All findings carry
+    0 points — see the threshold note above.
+    """
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    entries = list(reversed(parsed.get("received") or []))  # header order is newest first
+    hops = []
+    for entry in entries:
+        stamp = _received_datetime(entry.get("raw") or "")
+        hops.append(
+            {
+                "raw": entry.get("raw"),
+                "ips": entry.get("ips") or [],
+                "timestamp_utc": stamp.isoformat() if stamp else None,
+            }
+        )
+    anomalies: list[dict] = []
+    stamps = []
+    for index, hop in enumerate(hops):
+        stamp = _received_datetime(entries[index].get("raw") or "") if index < len(entries) else None
+        stamps.append(stamp)
+        if stamp is not None and (stamp - now).total_seconds() > FUTURE_TOLERANCE_SECONDS:
+            anomalies.append(
+                {
+                    "type": "future_dated_hop",
+                    "hop_index": index,
+                    "detail": f"Hop {index + 1} is dated {stamp.isoformat()}, which is in the future — a forged or misconfigured relay stamp.",
+                }
+            )
+    for index in range(1, len(hops)):
+        prev, cur = stamps[index - 1], stamps[index]
+        if prev is None or cur is None:
+            continue
+        delta = (cur - prev).total_seconds()
+        if delta < -NEGATIVE_TOLERANCE_SECONDS:
+            anomalies.append(
+                {
+                    "type": "negative_delay",
+                    "hop_index": index,
+                    "detail": f"Hop {index + 1} is stamped {abs(int(delta))}s BEFORE hop {index} — mail cannot arrive before it was sent; a stamp in the chain is forged or wrong.",
+                }
+            )
+        elif delta > LARGE_GAP_SECONDS:
+            anomalies.append(
+                {
+                    "type": "large_gap",
+                    "hop_index": index,
+                    "detail": f"{int(delta // 3600)}h gap between hop {index} and hop {index + 1} — the message sat in a queue or was held for days in transit.",
+                }
+            )
+    return {
+        "hop_count": len(hops),
+        "hops": hops,
+        "anomalies": anomalies,
+        "originating_ip": parsed.get("originating_ip"),
+        "points": 0,
+        "note": "Received stamps are written by relays including the sender's first hop, so timing findings are corroborating context (0 points), not scoring evidence.",
+    }
+
+
 def _check(name: str, status: str, detail: str, points: int = 0) -> dict:
     return {"name": name, "status": status, "detail": detail, "points": points}
 
@@ -259,6 +348,14 @@ def analyze_headers(parsed: dict) -> dict:
     else:
         checks.append(_check("received_chain", "warn", "No Received headers — the mail path cannot be traced. Common in pasted fragments, unusual in real mail.", POINTS["no_received"]))
 
+    # --- Received timing (informational, 0 points) ---
+    timing = analyze_received_timing(parsed)
+    if timing["anomalies"]:
+        summary = " ".join(a["detail"] for a in timing["anomalies"])
+        checks.append(_check("received_timing", "warn", f"Received timing anomalies: {summary}"))
+    elif timing["hop_count"]:
+        checks.append(_check("received_timing", "info", f"Received hop timestamps are in order across {timing['hop_count']} hop(s), with no future-dated stamps or unusual gaps."))
+
     rule_points = sum(c["points"] for c in checks)
     spoofed = spf == "fail" or dmarc == "fail" or (
         spf in ("fail", "softfail") and bool(reply_to and from_domain and reply_to.get("domain") != from_domain)
@@ -273,4 +370,5 @@ def analyze_headers(parsed: dict) -> dict:
         "rule_points": min(rule_points, 100),
         "dmarc_alignment": alignment,
         "arc": arc,
+        "received_timing": timing,
     }
