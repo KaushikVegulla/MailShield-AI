@@ -12,6 +12,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 
 from app.api.analyze import _result
+from app.services.iocs import iocs_to_csv, iocs_to_stix
 from app.services.report import generate_report_pdf
 
 router = APIRouter(prefix="/report", tags=["report"])
@@ -39,3 +40,31 @@ def report_for_pasted_email(payload: PasteRequest) -> Response:
 async def report_for_eml_upload(file: UploadFile = File(...)) -> Response:
     contents = await file.read()
     return _pdf_response(_result(contents))
+
+
+def _ioc_response(analysis: dict, format: str) -> Response:
+    if format.lower() == "stix":
+        import json
+
+        return Response(
+            content=json.dumps(iocs_to_stix(analysis), indent=2),
+            media_type="application/json",
+            headers={"Content-Disposition": "attachment; filename=mailshield-iocs.stix.json"},
+        )
+    return Response(
+        content=iocs_to_csv(analysis),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=mailshield-iocs.csv"},
+    )
+
+
+@router.post("/iocs/email")
+def iocs_for_pasted_email(payload: PasteRequest, format: str = "csv") -> Response:
+    """IOC export for a pasted email: ?format=csv (default) or stix."""
+    return _ioc_response(_result(payload.raw), format)
+
+
+@router.post("/iocs/eml")
+async def iocs_for_eml_upload(file: UploadFile = File(...), format: str = "csv") -> Response:
+    contents = await file.read()
+    return _ioc_response(_result(contents), format)
