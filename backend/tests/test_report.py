@@ -27,3 +27,12 @@ def test_report_pdf_via_eml_upload():
         response = client.post("/report/eml", files={"file": ("legit_college.eml", handle, "message/rfc822")})
     assert response.status_code == 200
     assert response.content.startswith(b"%PDF")
+
+
+def test_report_pdf_generates_for_all_samples():
+    for name in ("phishing_paypal.eml", "phishing_bank.eml", "legit_college.eml", "legit_newsletter.eml"):
+        raw = (SAMPLES / name).read_text()
+        response = client.post("/report/email", json={"raw": raw})
+        assert response.status_code == 200, name
+        assert response.content.startswith(b"%PDF"), name
+        assert len(response.content) > 1500, name

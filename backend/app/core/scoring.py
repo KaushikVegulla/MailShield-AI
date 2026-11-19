@@ -77,7 +77,11 @@ def build_reasons(header_forensics: dict, url_analysis: dict, ml_prediction: dic
     for url in url_analysis.get("urls", []):
         for flag in url.get("flags", []):
             if flag.get("points"):
-                reasons.append({"source": "url", "detail": f"{url['url']} — {flag['detail']}", "points": flag["points"]})
+                if url.get("source") == "qr":
+                    detail = f"QR code decoded link {url['url']} — {flag['detail']}"
+                    reasons.append({"source": "qr", "detail": detail, "points": flag["points"]})
+                else:
+                    reasons.append({"source": "url", "detail": f"{url['url']} — {flag['detail']}", "points": flag["points"]})
 
     if ml_prediction.get("model_available") and ml_prediction.get("phishing_probability") is not None:
         prob = ml_prediction["phishing_probability"]

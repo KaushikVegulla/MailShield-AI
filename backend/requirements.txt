@@ -6,3 +6,10 @@ reportlab==4.2.5
 scikit-learn==1.6.0
 xgboost==3.0.2
 joblib==1.4.2
+# QR code decoding (quishing): self-contained wheels, no system
+# libraries — zxing-cpp decodes, PyMuPDF renders PDF pages, Pillow
+# handles image bytes. All optional at runtime: without them the
+# analysis still runs and the QR section reports itself unavailable.
+zxing-cpp==3.1.1
+pymupdf==1.28.6
+pillow>=10.0
