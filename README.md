@@ -13,6 +13,11 @@ Paste an email or upload a `.eml` file and MailShield AI returns an explainable 
 - **Email input** — paste raw email text or upload a `.eml` file
 - **Header forensics** — SPF / DKIM / DMARC results, From vs Reply-To mismatch, spoofed sender detection, Received chain and originating IP
 - **URL analysis** — extracts all links and flags IP-based URLs, URL shorteners, punycode domains, look-alike / typosquatted domains, and display-text vs href mismatch
+- **Threat-feed matching** — analysed URLs (including QR-decoded ones) are matched locally against cached copies of the OpenPhish community feed and the Phishing.Database active-links list, refreshed in the background with a TTL and fail-open if unreachable. PhishTank's full feed is not used: it requires an API key, and MailShield takes no API keys
+- **Homograph detection** — UTS #39 confusable skeletons catch Cyrillic/Greek/fullwidth look-alike domains imitating protected brands
+- **Attachment triage** — static inspection for dangerous extensions, double extensions, archive contents, Office macros (including `vbaProject.bin`), and PDF active content; nothing is executed
+- **Received timing + geolocation** — hop timestamp anomalies (future-dated, negative delays, multi-day gaps, all informational) and a passive, cached ip-api.com lookup of the originating IP
+- **IOC export** — one-click CSV (defanged) and STIX 2.1 bundle export of every indicator in an analysis, via `POST /report/iocs/email` and `/report/iocs/eml` with `?format=csv|stix`
 - **ML phishing classifier** — trained on a real public phishing email dataset (see `ml/README.md`). Only real measured metrics are reported — no invented accuracy figures
 - **Hybrid explainable risk score** — rules (0.50) + ML (0.35) + anomaly (0.15) combined into one score, with every reason listed
 - **Analyst dashboard** — verdict, highlighted evidence, URL and header tables

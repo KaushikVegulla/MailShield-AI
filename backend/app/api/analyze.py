@@ -16,6 +16,9 @@ from pydantic import BaseModel
 from app import __version__ as TOOL_VERSION
 
 from app.core.anomaly import analyze_anomaly
+from app.core.attachments import analyze_attachments
+from app.core.feeds import apply_feed_matches
+from app.core.geo import lookup_ip
 from app.core.headers import analyze_headers
 from app.core.parser import parse_email
 from app.core.qr import extract_qr_codes
@@ -36,8 +39,12 @@ def _result(raw: str | bytes) -> dict:
     qr_analysis = extract_qr_codes(raw, parsed)
     qr_links = [{"url": url, "display_text": None, "source": "qr"} for url in qr_analysis.get("urls", [])]
     url_analysis = analyze_urls(parsed, extra_links=qr_links)
+    feed_analysis = apply_feed_matches(url_analysis)
+    attachment_analysis = analyze_attachments(raw, parsed)
+    originating_ip_geo = lookup_ip(parsed.get("originating_ip"))
     ml_prediction = predict_phishing(parsed)
-    anomaly = analyze_anomaly(parsed)
+    # Attachment filename risk is scored by triage, not here (no double count).
+    anomaly = analyze_anomaly(parsed, score_attachments=False)
     raw_bytes = raw.encode("utf-8", errors="replace") if isinstance(raw, str) else raw
     evidence = {
         "email_sha256": hashlib.sha256(raw_bytes).hexdigest(),
@@ -51,11 +58,14 @@ def _result(raw: str | bytes) -> dict:
         "parsed": parsed,
         "header_forensics": header_forensics,
         "url_analysis": url_analysis,
+        "feed_analysis": feed_analysis,
+        "attachment_analysis": attachment_analysis,
+        "originating_ip_geo": originating_ip_geo,
         "qr_analysis": qr_analysis,
         "ml_prediction": ml_prediction,
         "anomaly": anomaly,
         "evidence": evidence,
-        "verdict": score_email(parsed, header_forensics, url_analysis, ml_prediction, anomaly),
+        "verdict": score_email(parsed, header_forensics, url_analysis, ml_prediction, anomaly, attachment_analysis),
     }
 
 

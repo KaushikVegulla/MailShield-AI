@@ -66,7 +66,7 @@ def combine_scores(header_points: int, url_points: int, ml_points: int | None, a
     }
 
 
-def build_reasons(header_forensics: dict, url_analysis: dict, ml_prediction: dict, anomaly: dict) -> list[dict]:
+def build_reasons(header_forensics: dict, url_analysis: dict, ml_prediction: dict, anomaly: dict, attachment_analysis: dict | None = None) -> list[dict]:
     """Flatten every signal that fired into one explainable list."""
     reasons: list[dict] = []
 
@@ -77,7 +77,9 @@ def build_reasons(header_forensics: dict, url_analysis: dict, ml_prediction: dic
     for url in url_analysis.get("urls", []):
         for flag in url.get("flags", []):
             if flag.get("points"):
-                if url.get("source") == "qr":
+                if flag.get("source") == "feed":
+                    reasons.append({"source": "feed", "detail": f"{url['url']} — {flag['detail']}", "points": flag["points"]})
+                elif url.get("source") == "qr":
                     detail = f"QR code decoded link {url['url']} — {flag['detail']}"
                     reasons.append({"source": "qr", "detail": detail, "points": flag["points"]})
                 else:
@@ -96,17 +98,31 @@ def build_reasons(header_forensics: dict, url_analysis: dict, ml_prediction: dic
     for signal in anomaly.get("signals", []):
         reasons.append({"source": "anomaly", "detail": signal["detail"], "points": signal["points"]})
 
+    for attachment in (attachment_analysis or {}).get("attachments", []):
+        for finding in attachment.get("findings", []):
+            if finding.get("points"):
+                reasons.append({"source": "attachment", "detail": finding["detail"], "points": finding["points"]})
+
     reasons.sort(key=lambda r: (r["points"] is None, -(r["points"] or 0)))
     return reasons
 
 
-def score_email(parsed: dict, header_forensics: dict, url_analysis: dict, ml_prediction: dict, anomaly: dict) -> dict:
+def score_email(parsed: dict, header_forensics: dict, url_analysis: dict, ml_prediction: dict, anomaly: dict, attachment_analysis: dict | None = None) -> dict:
+    # Attachment triage points ride the anomaly weight (0.15): both are
+    # behavioural/content evidence rather than header or link rules,
+    # and the anomaly module no longer scores attachments itself when
+    # triage ran, so nothing is counted twice.
+    anomaly_points = anomaly.get("anomaly_points", 0)
+    if attachment_analysis is not None:
+        anomaly_points = min(100, anomaly_points + attachment_analysis.get("attachment_points", 0))
     result = combine_scores(
         header_points=header_forensics.get("rule_points", 0),
         url_points=url_analysis.get("url_points", 0),
         ml_points=ml_prediction.get("ml_points"),
-        anomaly_points=anomaly.get("anomaly_points", 0),
+        anomaly_points=anomaly_points,
     )
-    result["reasons"] = build_reasons(header_forensics, url_analysis, ml_prediction, anomaly)
+    if attachment_analysis is not None:
+        result["components"]["anomaly"]["attachment_points"] = attachment_analysis.get("attachment_points", 0)
+    result["reasons"] = build_reasons(header_forensics, url_analysis, ml_prediction, anomaly, attachment_analysis)
     result["anomaly_signals"] = anomaly.get("signals", [])
     return result

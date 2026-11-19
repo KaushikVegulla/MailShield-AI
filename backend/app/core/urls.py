@@ -15,6 +15,8 @@ import re
 from html.parser import HTMLParser
 from urllib.parse import urlparse
 
+from app.core.homograph import analyse_domain as _analyse_homograph
+
 URL_RE = re.compile(r"https?://[^\s<>\"')\]]+")
 DOMAIN_IN_TEXT_RE = re.compile(r"(?:https?://)?(?:www\.)?([a-z0-9-]+\.[a-z]{2,})(?:/[^\s]*)?", re.IGNORECASE)
 IP_HOST_RE = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}$")
@@ -49,6 +51,8 @@ POINTS = {
     "display_mismatch": 25,
     "punycode": 20,
     "lookalike": 20,
+    "homograph": 25,
+    "mixed_script": 15,
     "at_sign": 20,
     "shortener": 15,
     "http": 10,
@@ -172,6 +176,18 @@ def check_url(link: dict) -> dict:
     official = _lookalike_brand(host) if host and not is_ip else None
     if official:
         flags.append(_flag("lookalike", "fail", f"Domain imitates {official} but is not {official} — typosquatting / look-alike domain.", POINTS["lookalike"]))
+
+    # Homograph / confusable analysis (UTS #39 skeleton). The brand's
+    # own genuine domain never flags: there skeleton and actual agree.
+    if host and not is_ip:
+        homo = _analyse_homograph(host, _registrable, BRANDS)
+        if homo["imitates"]:
+            flags.append(_flag("homograph", "fail", f"Domain is a homograph of {homo['imitates']}: decoded as '{homo['decoded']}', its confusable skeleton is '{homo['skeleton']}' — characters from another script imitate the brand.", POINTS["homograph"]))
+        elif homo["mixed_script"]:
+            # 0 points when punycode already fired: the decoded mixed
+            # script is the same evidence the punycode flag scored.
+            already = any(f["name"] == "punycode" for f in flags)
+            flags.append(_flag("mixed_script", "warn", f"Domain mixes scripts ({', '.join(homo['scripts'])}): '{homo['decoded']}' — a classic homograph technique.", 0 if already else POINTS["mixed_script"]))
 
     if display_text:
         text_match = DOMAIN_IN_TEXT_RE.search(display_text)

@@ -68,7 +68,14 @@ def _hits(text: str, phrases: list[str]) -> list[str]:
     return [p for p in phrases if p in text]
 
 
-def analyze_anomaly(parsed: dict) -> dict:
+def analyze_anomaly(parsed: dict, score_attachments: bool = True) -> dict:
+    """Behavioural signals for one parsed email.
+
+    ``score_attachments=False`` skips the filename-level attachment
+    risk below: attachment triage (core/attachments.py) scores that
+    evidence more richly, and the API uses this flag so an attachment
+    is never scored twice for the same fact.
+    """
     text = _text_of(parsed)
     signals: list[dict] = []
     score = 0
@@ -91,7 +98,7 @@ def analyze_anomaly(parsed: dict) -> dict:
                 }
             )
 
-    for attachment in parsed.get("attachments") or []:
+    for attachment in (parsed.get("attachments") or []) if score_attachments else []:
         filename = (attachment.get("filename") or "").lower()
         ext = "." + filename.rsplit(".", 1)[-1] if "." in filename else ""
         # double extension like invoice.pdf.exe
