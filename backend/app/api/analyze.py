@@ -27,6 +27,7 @@ from app.core.redirects import analyze_redirects
 from app.core.scoring import score_email
 from app.core.urls import analyze_urls
 from app.ml.predict import predict_phishing
+from app.ml.second_opinion import second_opinion
 
 router = APIRouter(prefix="/analyze", tags=["analyze"])
 
@@ -58,6 +59,7 @@ def _result(raw: str | bytes) -> dict:
         "tool_version": TOOL_VERSION,
         "note": "SHA-256 computed over the email bytes exactly as received. Analysis is stateless — no copy of the email is retained after the request.",
     }
+    verdict = score_email(parsed, header_forensics, url_analysis, ml_prediction, anomaly, attachment_analysis, bec_analysis)
     return {
         "parsed": parsed,
         "header_forensics": header_forensics,
@@ -69,9 +71,11 @@ def _result(raw: str | bytes) -> dict:
         "originating_ip_geo": originating_ip_geo,
         "qr_analysis": qr_analysis,
         "ml_prediction": ml_prediction,
+        # Advisory only: computed after the verdict, never passed to it.
+        "second_opinion": second_opinion(parsed),
         "anomaly": anomaly,
         "evidence": evidence,
-        "verdict": score_email(parsed, header_forensics, url_analysis, ml_prediction, anomaly, attachment_analysis, bec_analysis),
+        "verdict": verdict,
     }
 
 
