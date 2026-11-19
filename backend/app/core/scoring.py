@@ -77,7 +77,9 @@ def build_reasons(header_forensics: dict, url_analysis: dict, ml_prediction: dic
     for url in url_analysis.get("urls", []):
         for flag in url.get("flags", []):
             if flag.get("points"):
-                if url.get("source") == "qr":
+                if flag.get("source") == "feed":
+                    reasons.append({"source": "feed", "detail": f"{url['url']} — {flag['detail']}", "points": flag["points"]})
+                elif url.get("source") == "qr":
                     detail = f"QR code decoded link {url['url']} — {flag['detail']}"
                     reasons.append({"source": "qr", "detail": detail, "points": flag["points"]})
                 else:
