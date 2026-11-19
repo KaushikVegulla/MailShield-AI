@@ -24,4 +24,11 @@ app.include_router(explain_router)
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "mailshield-ai", "version": "0.1.0"}
+    from app.ml.predict import _load
+
+    return {
+        "status": "ok",
+        "service": "mailshield-ai",
+        "version": "0.1.0",
+        "ml_model": "loaded" if _load() is not None else "absent",
+    }
